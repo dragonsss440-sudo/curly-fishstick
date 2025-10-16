@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>فتح الكاميرا — رابط مباشر</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;direction:rtl;text-align:center;padding:1.25rem}
+    .card{max-width:720px;margin:0 auto;background:#fff;border-radius:12px;padding:1rem;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+    video{width:100%;height:auto;border-radius:8px;background:#000}
+    button{padding:0.6rem 1rem;border-radius:10px;border:0;background:#0b84ff;color:#fff;font-size:1rem}
+    #notice{font-size:0.9rem;color:#555;margin-top:0.5rem}
+    #canvas{max-width:100%;margin-top:0.75rem;border-radius:8px}
+    .row{display:flex;gap:0.5rem;justify-content:center;margin-top:0.75rem}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>فتح الكاميرا مباشرة</h2>
+    <p id="notice">اضغط زر <strong>فتح الكاميرا</strong> وسيطلب المتصفح إذن الوصول. يعمل على معظم متصفحات الهاتف (يفضل صفحة عبر HTTPS).</p>
+
+    <div id="app">
+      <video id="video" playsinline autoplay></video>
+      <div class="row">
+        <button id="start">فتح الكاميرا</button>
+        <button id="snap" disabled>التقاط صورة</button>
+        <button id="stop" disabled>إيقاف</button>
+      </div>
+      <canvas id="canvas" style="display:none"></canvas>
+      <div id="output"></div>
+
+      <p style="margin-top:0.6rem;font-size:0.9rem;color:#666">ملاحظة: إذا لم تعمل الكاميرا هنا، انسخ الملف إلى استضافة تدعم HTTPS (مثل GitHub Pages أو Netlify).</p>
+    </div>
+
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('start');
+    const stopBtn = document.getElementById('stop');
+    const snapBtn = document.getElementById('snap');
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const output = document.getElementById('output');
+    let stream = null;
+
+    async function startCamera(){
+      output.innerHTML = '';
+      try{
+        stream = await navigator.mediaDevices.getUserMedia({video:{facingMode: 'environment'}, audio:false});
+        video.srcObject = stream;
+        snapBtn.disabled = false;
+        stopBtn.disabled = false;
+        startBtn.disabled = true;
+      }catch(err){
+        output.innerHTML = '<p style="color:#b22">فشل الوصول إلى الكاميرا: '+err.message+'</p>';
+      }
+    }
+
+    function stopCamera(){
+      if (stream){
+        stream.getTracks().forEach(t=>t.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      snapBtn.disabled = true;
+      stopBtn.disabled = true;
+      startBtn.disabled = false;
+    }
+
+    snapBtn.addEventListener('click', ()=>{
+      if (!video.videoWidth) return;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video,0,0);
+      const data = canvas.toDataURL('image/jpeg', 0.9);
+      output.innerHTML = '<p>معاينة الصورة:</p><a download="capture.jpg" href="'+data+'"><img src="'+data+'" style="max-width:100%;border-radius:8px"></a><p style="font-size:0.85rem;color:#444">اضغط الصورة لتنزيلها.</p>';
+    });
+
+    startBtn.addEventListener('click', startCamera);
+    stopBtn.addEventListener('click', stopCamera);
+
+    // تجربة بديلة: لو المتصفح لا يدعم getUserMedia، نعرض مدخل ملف يفتح الكاميرا على بعض الأجهزة
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      const hint = document.createElement('p');
+      hint.innerHTML = 'متصفحك لا يدعم الكاميرا المباشرة هنا — استخدم زر "فتح الكاميرا" أدناه لفتح كاميرا عبر إدخال ملف (يعمل على كثير من الهواتف).';
+      document.getElementById('app').prepend(hint);
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.capture = 'environment';
+      fileInput.style.marginTop = '0.6rem';
+      fileInput.addEventListener('change', e=>{
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        const url = URL.createObjectURL(f);
+        output.innerHTML = '<p>معاينة:</p><img src="'+url+'" style="max-width:100%;border-radius:8px">';
+      });
+      const openFileBtn = document.createElement('button');
+      openFileBtn.textContent = 'فتح الكاميرا (عن طريق ملف)';
+      openFileBtn.style.marginTop = '0.5rem';
+      openFileBtn.addEventListener('click', ()=>fileInput.click());
+      document.getElementById('app').appendChild(openFileBtn);
+    }
+
+    // تحذير سلامة
+    const footer = document.createElement('p');
+    footer.id = 'safety';
+    footer.style.marginTop = '0.8rem';
+    footer.style.fontSize = '0.85rem';
+    footer.style.color = '#666';
+    footer.textContent = 'استخدم هذا الرابط للمزاح الآمن أو التجارب فقط — لا تسجل أو تشارك صوراً أو فيديوهات للآخرين دون إذن.';
+    document.body.appendChild(footer);
+  </script>
+</body>
+</html>
